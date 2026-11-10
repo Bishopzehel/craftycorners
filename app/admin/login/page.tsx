@@ -1,0 +1,1 @@
+export default function AdminLogin(){return <main className="inner-page"><p className="eyebrow">PRIVATE AREA</p><h1>Admin <em>access.</em></h1><section className="simple-panel"><p>Admin sign-in will be secured with Supabase Auth in the next setup step. Do not share this page or expose database service keys.</p></section></main>}
