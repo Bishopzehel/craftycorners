@@ -37,3 +37,5 @@ create policy "Public view product images" on storage.objects for select using(b
 create policy "Admin upload product images" on storage.objects for insert with check(bucket_id='product-images' and public.is_store_admin());
 create policy "Admin update product images" on storage.objects for update using(bucket_id='product-images' and public.is_store_admin()) with check(bucket_id='product-images' and public.is_store_admin());
 create policy "Admin delete product images" on storage.objects for delete using(bucket_id='product-images' and public.is_store_admin());
+
+create policy "Admins can view own admin row" on public.admin_users for select using(user_id=auth.uid());
