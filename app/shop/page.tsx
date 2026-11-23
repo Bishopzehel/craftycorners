@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 type Product = { id: string; name: string; slug: string; price: number; description: string | null; image_url: string | null; stock: number; categories?: { name: string; slug: string }[] | null };
 type Category = { id: string; name: string; slug: string };
