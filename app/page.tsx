@@ -12,7 +12,7 @@ type Product = {
   compare_at_price: number | null;
   image_url: string | null;
   stock: number;
-  categories?: { name: string; slug: string } | null;
+  categories?: { name: string; slug: string }[] | null;
 };
 
 const collections = [
@@ -47,7 +47,7 @@ export default function Home() {
 
   const visibleProducts = useMemo(() => activeCollection === 'All'
     ? products
-    : products.filter((product) => product.categories?.slug === activeCollection), [products, activeCollection]);
+    : products.filter((product) => product.categories?.[0]?.slug === activeCollection), [products, activeCollection]);
 
   return (
     <main className="premium-home">
@@ -122,7 +122,7 @@ export default function Home() {
                     {product.stock <= 0 && <span className="product-ribbon">Currently unavailable</span>}
                     <span className="product-view">View piece ↗</span>
                   </Link>
-                  <div className="premium-product-info"><div><p>{product.categories?.name || 'CRAFTYCORNERS EDIT'}</p><h3>{product.name}</h3></div><strong>₹{Number(product.price).toLocaleString('en-IN')}</strong></div>
+                  <div className="premium-product-info"><div><p>{product.categories?.[0]?.name || 'CRAFTYCORNERS EDIT'}</p><h3>{product.name}</h3></div><strong>₹{Number(product.price).toLocaleString('en-IN')}</strong></div>
                 </article>
               ))}
             </div>
