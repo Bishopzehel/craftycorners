@@ -38,6 +38,18 @@ create table if not exists public.products (
   updated_at timestamptz not null default now()
 );
 
+-- Backfill columns when upgrading from the original Craftycorners starter schema.
+alter table public.categories add column if not exists image_url text;
+alter table public.categories add column if not exists sort_order integer not null default 0;
+alter table public.products add column if not exists compare_at_price numeric(10,2);
+alter table public.products add column if not exists sku text;
+alter table public.products add column if not exists category_id uuid references public.categories(id) on delete set null;
+alter table public.products add column if not exists image_url text;
+alter table public.products add column if not exists gallery_urls text[] not null default '{}';
+alter table public.products add column if not exists seo_title text;
+alter table public.products add column if not exists seo_description text;
+alter table public.products add column if not exists updated_at timestamptz not null default now();
+
 create index if not exists products_status_created_idx on public.products(status, created_at desc);
 create index if not exists products_category_idx on public.products(category_id);
 create index if not exists categories_sort_idx on public.categories(sort_order, name);
