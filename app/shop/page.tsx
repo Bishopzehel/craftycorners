@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
-type Product = { id: string; name: string; slug: string; price: number; description: string | null; image_url: string | null; stock: number; categories?: { name: string; slug: string } | null };
+type Product = { id: string; name: string; slug: string; price: number; description: string | null; image_url: string | null; stock: number; categories?: { name: string; slug: string }[] | null };
 type Category = { id: string; name: string; slug: string };
 
 export default function Shop() {
@@ -34,7 +34,7 @@ export default function Shop() {
   }, []);
 
   const shown = useMemo(() => items.filter(item =>
-    (category === 'all' || item.categories?.slug === category) &&
+    (category === 'all' || item.categories?.[0]?.slug === category) &&
     (item.name.toLowerCase().includes(search.toLowerCase()) || (item.description || '').toLowerCase().includes(search.toLowerCase()))
   ), [items, category, search]);
 
@@ -50,7 +50,7 @@ export default function Shop() {
       {loading ? <p>Curating the collection…</p> : error ? <section className="simple-panel"><h2>Our collection is getting ready.</h2><p>{error}</p></section> : shown.length === 0 ? <section className="simple-panel"><h2>No pieces found.</h2><p>Try another search or explore a different collection.</p></section> : (
         <div className="products">{shown.map(product => <article className="product" key={product.id}>
           <Link href={'/products/' + product.slug}><div className="product-image">{product.image_url ? <img src={product.image_url} alt={product.name} loading="lazy" /> : <span className="product-emoji">✳</span>}</div></Link>
-          <div className="product-meta"><div><p>{product.categories?.name || 'Craftycorners'}</p><h3>{product.name}</h3></div><strong>₹{Number(product.price).toLocaleString('en-IN')}</strong></div>
+          <div className="product-meta"><div><p>{product.categories?.[0]?.name || 'Craftycorners'}</p><h3>{product.name}</h3></div><strong>₹{Number(product.price).toLocaleString('en-IN')}</strong></div>
           <Link className="text-link" href={'/products/' + product.slug}>Discover this piece →</Link>
         </article>)}</div>
       )}
