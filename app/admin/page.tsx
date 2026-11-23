@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../../lib/supabase';
 
 type Category = { id: string; name: string };
 type Product = { id: string; name: string; slug: string; price: number; stock: number; status: string; image_url: string | null; sku: string | null; category_id: string | null };
