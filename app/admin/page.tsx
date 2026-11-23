@@ -18,6 +18,9 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState('');
+  const [categoryName, setCategoryName] = useState('');
+  const [categoryDescription, setCategoryDescription] = useState('');
+  const [categorySaving, setCategorySaving] = useState(false);
   const router = useRouter();
 
   async function loadCatalogue() {
@@ -50,6 +53,25 @@ export default function Admin() {
     initialize();
     return () => { active = false; };
   }, [router]);
+
+  async function addCategory(event: React.FormEvent) {
+    event.preventDefault();
+    if (!supabase || !categoryName.trim()) return;
+    setCategorySaving(true); setNotice('');
+    const name = categoryName.trim();
+    const slug = slugify(name);
+    const { data, error } = await supabase.from('categories').insert({
+      name,
+      slug,
+      description: categoryDescription.trim() || null,
+    }).select('id,name').single();
+    setCategorySaving(false);
+    if (error) { setNotice('Category could not be created: ' + error.message); return; }
+    setCategories(current => [...current, data]);
+    setForm(current => ({ ...current, category_id: data.id }));
+    setCategoryName(''); setCategoryDescription('');
+    setNotice('Category created and selected for your next product.');
+  }
 
   async function addProduct(event: React.FormEvent) {
     event.preventDefault();
@@ -107,6 +129,13 @@ export default function Admin() {
       {!supabase && <section className="simple-panel"><h2>Supabase connection needed</h2><p>Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to your deployment environment.</p></section>}
       <div className="admin-grid">
         <section className="simple-panel">
+          <p className="eyebrow">COLLECTION MANAGEMENT</p><h2>Add a category</h2>
+          <form className="admin-form" onSubmit={addCategory}>
+            <label>Category name<input required maxLength={80} value={categoryName} onChange={e => setCategoryName(e.target.value)} placeholder="e.g. Tableware" /></label>
+            <label>Short description<textarea rows={2} value={categoryDescription} onChange={e => setCategoryDescription(e.target.value)} placeholder="What will customers find in this collection?" /></label>
+            <button className="primary" disabled={categorySaving}>{categorySaving ? 'Creating category…' : 'Create category →'}</button>
+          </form>
+          <hr />
           <p className="eyebrow">NEW LISTING</p><h2>Add a product</h2>
           <form className="admin-form" onSubmit={addProduct}>
             <label>Product name<input required maxLength={120} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></label>
@@ -121,7 +150,8 @@ export default function Admin() {
             <label>Collection<select value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })}><option value="">Choose a collection</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
             <label>Product photographs<input id="product-photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple onChange={e => setFiles(Array.from(e.target.files || []))} /><small>First photo is the cover image. Up to 10 MB per image.</small></label>
             <label>Product description<textarea rows={5} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Describe the material, craftsmanship, dimensions and care instructions." /></label>
-            <button className="primary" disabled={saving}>{saving ? 'Uploading and saving…' : 'Save product as draft →'}</button>
+            <button className="primary" disabled={saving}>{saving ? 'Uploading and saving…' : 'Save draft & add another →'}</button>
+            <small>After saving, the form clears so you can enter the next product. Repeat for each item; products are saved as drafts until you publish them.</small>
           </form>
         </section>
         <section className="simple-panel">
