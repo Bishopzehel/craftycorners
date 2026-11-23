@@ -1,35 +1,141 @@
 'use client';
-import { useMemo, useState } from 'react';
 
-const products = [
- {id:1,name:'Hand-painted Floral Wall Plate',category:'Home Decor',price:799,tag:'Bestseller',emoji:'🌼',bg:'#f4e6d8',desc:'A vibrant handcrafted accent for your walls.'},
- {id:2,name:'Boho Beaded Statement Necklace',category:'Jewellery',price:649,tag:'New',emoji:'📿',bg:'#eadfe8',desc:'Artisan-inspired detail for everyday elegance.'},
- {id:3,name:'Bamboo Art Wall Hanging',category:'Home Decor',price:1199,tag:'Handmade',emoji:'🎋',bg:'#e3eadc',desc:'Natural textures, made to bring warmth home.'},
- {id:4,name:'Little Moments Gift Box',category:'Gifts',price:549,tag:'Gift pick',emoji:'🎁',bg:'#f2dfd5',desc:'A thoughtful surprise for someone special.'},
- {id:5,name:'Evil Eye Bracelet',category:'Jewellery',price:299,tag:'Popular',emoji:'🧿',bg:'#dce9ed',desc:'A minimal charm with a meaningful touch.'},
- {id:6,name:'Handcrafted Ceramic Planter',category:'Home Decor',price:899,tag:'Artisan made',emoji:'🪴',bg:'#e9e2d4',desc:'Give your favourite corner a little life.'}
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+
+type Product = {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  compare_at_price: number | null;
+  image_url: string | null;
+  stock: number;
+  categories?: { name: string; slug: string } | null;
+};
+
+const collections = [
+  { name: 'Home Decor', slug: 'home-decor', note: 'Objects that make a space feel like yours', number: '01' },
+  { name: 'Jewellery', slug: 'jewellery', note: 'Little details with a lot of character', number: '02' },
+  { name: 'Gifts', slug: 'gifts', note: 'Thoughtful gestures, beautifully wrapped', number: '03' },
 ];
-export default function Home(){
- const [cart,setCart]=useState<Record<number,number>>({});
- const [category,setCategory]=useState('All');
- const [query,setQuery]=useState('');
- const [chatOpen,setChatOpen]=useState(false);
- const [chat,setChat]=useState('');
- const [messages,setMessages]=useState<string[]>(['Hi! I’m your Craftycorners shopping assistant. Tell me what you’re looking for ✨']);
- const count=Object.values(cart).reduce((a,b)=>a+b,0);
- const total=products.reduce((s,p)=>s+p.price*(cart[p.id]||0),0);
- const shown=useMemo(()=>products.filter(p=>(category==='All'||p.category===category)&&p.name.toLowerCase().includes(query.toLowerCase())),[category,query]);
- function add(id:number){setCart(c=>({...c,[id]:(c[id]||0)+1}));}
- function send(){if(!chat.trim())return;setMessages(m=>[...m,'You: '+chat,'Demo assistant: I can help you discover products. In the live version, I’ll search our catalogue and recommend exact items.']);setChat('');}
- return <main>
-  
-  <section className="hero"><div className="hero-copy"><p className="eyebrow">MADE WITH MEANING</p><h1>Little things.<br/><em>Beautifully</em> made.</h1><p>Discover handcrafted home décor, jewellery and gifts that make everyday moments feel special.</p><a className="primary" href="/shop">Explore the collection <span>↗</span></a><div className="trust"><span>✳ Thoughtfully curated</span><span>✳ Artisan-inspired</span></div></div><div className="hero-art"><div className="sun"></div><div className="art-card art-one">✿<small>made by hand</small></div><div className="art-card art-two">♡</div><div className="art-caption">Objects with a story</div></div></section>
-  <section className="categories"><div><small>SHOP BY MOOD</small><h2>Find your kind of lovely.</h2></div><div className="cat-pills">{['All','Home Decor','Jewellery','Gifts'].map(c=><button className={category===c?'active':''} key={c} onClick={()=>setCategory(c)}>{c}</button>)}</div></section>
-  <section id="shop" className="shop"><div className="shop-head"><div><p className="eyebrow">THE COLLECTION</p><h2>Made to be <em>loved.</em></h2></div><input aria-label="Search products" placeholder="Search the collection…" value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="products">{shown.map(p=><article className="product" key={p.id}><div className="product-image" style={{background:p.bg}}><span className="tag">{p.tag}</span><span className="product-emoji">{p.emoji}</span><button className="quick-add" onClick={()=>add(p.id)}>＋ Add</button></div><div className="product-meta"><div><h3>{p.name}</h3><p>{p.category}</p></div><strong>₹{p.price.toLocaleString('en-IN')}</strong></div><p className="desc">{p.desc}</p></article>)}</div>{shown.length===0&&<p className="empty">No products found. Try another search.</p>}</section>
-  <section id="story" className="story"><div className="story-symbol">✳</div><div><p className="eyebrow">A LITTLE ABOUT US</p><h2>From our hands<br/>to <em>your home.</em></h2><p>We believe the most meaningful things are the ones made with care. Craftycorners brings together handcrafted details, joyful gifts and everyday pieces with personality.</p></div><div className="story-note">Small joys.<br/><em>Big heart.</em></div></section>
-  <section id="cart" className="cart-section"><div><p className="eyebrow">YOUR BAG</p><h2>A few lovely things.</h2></div><div className="cart-box">{count===0?<p>Your bag is waiting for something lovely.</p>:products.filter(p=>cart[p.id]).map(p=><div className="cart-row" key={p.id}><span>{p.emoji} {p.name} × {cart[p.id]}</span><strong>₹{(p.price*cart[p.id]).toLocaleString('en-IN')}</strong><button onClick={()=>setCart(c=>({...c,[p.id]:Math.max(0,(c[p.id]||0)-1)}))}>−</button><button onClick={()=>add(p.id)}>＋</button></div>)}<div className="cart-total"><span>Subtotal</span><strong>₹{total.toLocaleString('en-IN')}</strong></div><button className="primary checkout" disabled={!count} onClick={()=>alert('Checkout integration will be connected in the next build.')}>Continue to checkout →</button><small>Secure payments and shipping will be connected next.</small></div></section>
 
-  <button className="ai-fab" onClick={()=>setChatOpen(!chatOpen)}>✦ Ask Crafty AI</button>
-  {chatOpen&&<aside className="chat-panel"><div className="chat-head"><div><b>Crafty AI</b><small>Your personal shopping helper</small></div><button onClick={()=>setChatOpen(false)}>×</button></div><div className="chat-messages">{messages.map((m,i)=><p key={i}>{m}</p>)}</div><form onSubmit={e=>{e.preventDefault();send()}}><input value={chat} onChange={e=>setChat(e.target.value)} placeholder="What are you shopping for?"/><button>↑</button></form><small className="demo-note">Preview mode · AI API not connected yet</small></aside>}
- </main>
+export default function Home() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeCollection, setActiveCollection] = useState('All');
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadProducts() {
+      if (!supabase) { setLoading(false); return; }
+      const { data, error } = await supabase
+        .from('products')
+        .select('id,name,slug,price,compare_at_price,image_url,stock,categories(name,slug)')
+        .eq('status', 'published')
+        .order('created_at', { ascending: false })
+        .limit(8);
+      if (mounted) {
+        if (!error) setProducts((data || []) as Product[]);
+        setLoading(false);
+      }
+    }
+    loadProducts();
+    return () => { mounted = false; };
+  }, []);
+
+  const visibleProducts = useMemo(() => activeCollection === 'All'
+    ? products
+    : products.filter((product) => product.categories?.slug === activeCollection), [products, activeCollection]);
+
+  return (
+    <main className="premium-home">
+      <section className="home-hero">
+        <div className="hero-copy">
+          <p className="eyebrow">CRAFTED WITH CHARACTER · CURATED WITH CARE</p>
+          <h1>Make room for<br /><em>the meaningful.</em></h1>
+          <p className="hero-intro">Discover handcrafted home accents, expressive jewellery and thoughtful gifts — chosen to bring a little more beauty to the everyday.</p>
+          <div className="hero-actions">
+            <Link className="button-primary" href="/shop">Explore the collection <span>↗</span></Link>
+            <Link className="text-link" href="/about">The Craftycorners story</Link>
+          </div>
+          <div className="hero-signoff"><span className="signoff-line" /> From our hands to your home.</div>
+        </div>
+        <div className="hero-composition" aria-label="Craftycorners curated collection">
+          <div className="hero-image-frame">
+            {products.find((product) => product.image_url)?.image_url
+              ? <img src={products.find((product) => product.image_url)!.image_url!} alt="A featured handcrafted piece from Craftycorners" />
+              : <div className="hero-image-placeholder"><span className="placeholder-orbit">✳</span><span>Objects with a story</span></div>}
+          </div>
+          <div className="hero-stamp"><span>THE ART OF</span><strong>thoughtful<br />living</strong><span>CRAFTYCORNERS · EST. WITH LOVE</span></div>
+          <div className="hero-caption">A collection of little<br />things that feel like you.</div>
+        </div>
+      </section>
+
+      <section className="brand-values" aria-label="Our values">
+        <span>Thoughtfully selected</span><i>✳</i><span>Made to be treasured</span><i>✳</i><span>From our hands to your home</span>
+      </section>
+
+      <section className="collection-section section-wrap">
+        <div className="section-heading">
+          <div><p className="eyebrow">A PLACE FOR EVERY KIND OF LOVELY</p><h2>Explore our <em>collections.</em></h2></div>
+          <Link className="text-link" href="/categories">View all categories ↗</Link>
+        </div>
+        <div className="collection-grid">
+          {collections.map((collection, index) => (
+            <Link className={'collection-card collection-card-' + (index + 1)} href={'/categories/' + collection.slug} key={collection.slug}>
+              <span className="collection-number">{collection.number} / COLLECTION</span>
+              <span className="collection-symbol">{index === 0 ? '⌂' : index === 1 ? '◇' : '✳'}</span>
+              <span className="collection-card-bottom"><strong>{collection.name}</strong><small>{collection.note}</small><b>Explore ↗</b></span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="featured-section">
+        <div className="section-wrap">
+          <div className="section-heading">
+            <div><p className="eyebrow">THE GOOD THINGS</p><h2>Find your next <em>favourite.</em></h2></div>
+            <Link className="text-link" href="/shop">Shop everything ↗</Link>
+          </div>
+          <div className="catalogue-toolbar">
+            <div className="filter-tabs">
+              <button className={activeCollection === 'All' ? 'selected' : ''} onClick={() => setActiveCollection('All')}>All finds</button>
+              {collections.map((collection) => <button key={collection.slug} className={activeCollection === collection.slug ? 'selected' : ''} onClick={() => setActiveCollection(collection.slug)}>{collection.name}</button>)}
+            </div>
+            <span className="catalogue-count">{products.length} {products.length === 1 ? 'piece' : 'pieces'}</span>
+          </div>
+          {loading ? <div className="catalogue-empty">Curating the collection…</div> : visibleProducts.length === 0 ? (
+            <div className="catalogue-empty">
+              <span className="empty-flower">✳</span>
+              <h3>{products.length ? 'More lovely things await.' : 'Our shelves are being filled.'}</h3>
+              <p>{products.length ? 'There are no published pieces in this collection just yet.' : 'New finds will appear here as soon as they are added to the Craftycorners studio.'}</p>
+              <Link className="text-link" href="/shop">Visit the shop ↗</Link>
+            </div>
+          ) : (
+            <div className="premium-products">
+              {visibleProducts.slice(0, 4).map((product) => (
+                <article className="premium-product" key={product.id}>
+                  <Link href={'/products/' + product.slug} className="premium-product-image">
+                    {product.image_url ? <img src={product.image_url} alt={product.name} loading="lazy" /> : <span className="product-placeholder">✳</span>}
+                    {product.stock <= 0 && <span className="product-ribbon">Currently unavailable</span>}
+                    <span className="product-view">View piece ↗</span>
+                  </Link>
+                  <div className="premium-product-info"><div><p>{product.categories?.name || 'CRAFTYCORNERS EDIT'}</p><h3>{product.name}</h3></div><strong>₹{Number(product.price).toLocaleString('en-IN')}</strong></div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="story-banner">
+        <div className="story-mark">C<span>.</span></div>
+        <div><p className="eyebrow">A LITTLE MORE ABOUT US</p><h2>Not just things.<br /><em>Things with feeling.</em></h2><p>We believe the pieces we live with should mean something. Craftycorners brings together thoughtful finds, handcrafted details and gifts worth remembering.</p><Link className="button-light" href="/about">Get to know us ↗</Link></div>
+      </section>
+
+      <section className="newsletter-note"><p className="eyebrow">A NOTE FROM OUR CORNER</p><h2>Good things are <em>worth discovering.</em></h2><p>Follow the little details, new arrivals and stories behind the things we love.</p><a className="text-link" href="https://www.instagram.com/craftycorners.in/" target="_blank" rel="noreferrer">Find us on Instagram ↗</a></section>
+    </main>
+  );
 }
