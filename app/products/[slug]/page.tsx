@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../../../lib/supabase';
 
 type Product = { name:string; slug:string; price:number; compare_at_price:number|null; description:string|null; image_url:string|null; gallery_urls:string[]|null; stock:number; sku:string|null };
 
