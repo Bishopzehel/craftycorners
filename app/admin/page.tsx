@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabase';
+import * as XLSX from 'xlsx';
 
 type Category = { id: string; name: string };
 type Product = { id: string; name: string; slug: string; price: number; stock: number; status: string; image_url: string | null; sku: string | null; category_id: string | null };
@@ -21,6 +22,9 @@ export default function Admin() {
   const [categoryName, setCategoryName] = useState('');
   const [categoryDescription, setCategoryDescription] = useState('');
   const [categorySaving, setCategorySaving] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importReport, setImportReport] = useState('');
   const router = useRouter();
 
   async function loadCatalogue() {
@@ -112,6 +116,69 @@ export default function Admin() {
     await loadCatalogue();
   }
 
+  async function importSpreadsheet(event: React.FormEvent) {
+    event.preventDefault();
+    if (!supabase || !importFile) return;
+    setImporting(true); setImportReport(''); setNotice('');
+    try {
+      const buffer = await importFile.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      if (!firstSheet) throw new Error('The spreadsheet has no worksheet.');
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { defval: '' });
+      if (!rows.length) throw new Error('No product rows were found.');
+      if (rows.length > 500) throw new Error('Import is limited to 500 products per spreadsheet.');
+      const normalize = (value: unknown) => String(value ?? '').trim();
+      const header = (row: Record<string, unknown>, key: string) => {
+        const found = Object.keys(row).find(k => k.trim().toLowerCase() === key);
+        return found ? row[found] : '';
+      };
+      const categoryMap = new Map(categories.map(category => [category.name.trim().toLowerCase(), category.id]));
+      const newCategoryNames = Array.from(new Set(rows.map(row => normalize(header(row, 'category'))).filter(name => name && !categoryMap.has(name.toLowerCase()))));
+      for (const name of newCategoryNames) {
+        const { data, error } = await supabase.from('categories').insert({ name, slug: slugify(name) }).select('id,name').single();
+        if (error) throw new Error('Could not create category "' + name + '": ' + error.message);
+        categoryMap.set(data.name.toLowerCase(), data.id);
+      }
+      const payload = rows.map((row, index) => {
+        const name = normalize(header(row, 'name'));
+        const priceText = normalize(header(row, 'price'));
+        const price = Number(priceText.replace(/[^0-9.-]/g, ''));
+        const stockValue = normalize(header(row, 'stock'));
+        const stock = stockValue ? Number(stockValue) : 0;
+        if (!name) throw new Error('Row ' + (index + 2) + ': product name is required.');
+        if (!priceText || !Number.isFinite(price) || price < 0) throw new Error('Row ' + (index + 2) + ': enter a valid price.');
+        if (!Number.isInteger(stock) || stock < 0) throw new Error('Row ' + (index + 2) + ': stock must be a whole number of 0 or more.');
+        const categoryName = normalize(header(row, 'category'));
+        const compareText = normalize(header(row, 'compare_at_price'));
+        const compare = compareText ? Number(compareText.replace(/[^0-9.-]/g, '')) : null;
+        if (compare !== null && (!Number.isFinite(compare) || compare < price)) throw new Error('Row ' + (index + 2) + ': compare_at_price must be greater than or equal to price.');
+        const sku = normalize(header(row, 'sku')) || null;
+        const imageUrl = normalize(header(row, 'image_url')) || null;
+        if (imageUrl && !/^https?:\/\//i.test(imageUrl)) throw new Error('Row ' + (index + 2) + ': image_url must be a public HTTP(S) URL.');
+        return {
+          name, slug: slugify(name) + '-' + Date.now().toString(36) + '-' + index,
+          price, compare_at_price: compare, stock, sku,
+          category_id: categoryName ? categoryMap.get(categoryName.toLowerCase()) || null : null,
+          description: normalize(header(row, 'description')) || null,
+          image_url: imageUrl, gallery_urls: imageUrl ? [imageUrl] : [],
+          status: 'draft',
+        };
+      });
+      const { error } = await supabase.from('products').insert(payload);
+      if (error) throw new Error(error.message);
+      setImportReport('Successfully imported ' + payload.length + ' products as drafts. Created ' + newCategoryNames.length + ' new categories.');
+      setImportFile(null);
+      const input = document.getElementById('catalogue-import') as HTMLInputElement | null;
+      if (input) input.value = '';
+      await loadCatalogue();
+    } catch (error) {
+      setImportReport(error instanceof Error ? error.message : 'Spreadsheet import failed.');
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function togglePublish(product: Product) {
     if (!supabase) return;
     const nextStatus = product.status === 'published' ? 'draft' : 'published';
@@ -135,6 +202,15 @@ export default function Admin() {
             <label>Short description<textarea rows={2} value={categoryDescription} onChange={e => setCategoryDescription(e.target.value)} placeholder="What will customers find in this collection?" /></label>
             <button className="primary" disabled={categorySaving}>{categorySaving ? 'Creating category…' : 'Create category →'}</button>
           </form>
+          <hr />
+          <p className="eyebrow">BULK CATALOGUE IMPORT</p><h2>Import from spreadsheet</h2>
+          <p>Upload an .xlsx, .xls or .csv file. Each row becomes a product draft. Categories not already in your store will be created automatically.</p>
+          <p><a className="text-link" href="/product-import-template.csv" download>Download import template ↓</a></p>
+          <form className="admin-form" onSubmit={importSpreadsheet}>
+            <label>Product spreadsheet<input id="catalogue-import" type="file" accept=".xlsx,.xls,.csv" required onChange={e => setImportFile(e.target.files?.[0] || null)} /><small>Maximum 500 products per import. Product photos can be supplied as public image_url links.</small></label>
+            <button className="primary" disabled={importing || !importFile}>{importing ? 'Importing products…' : 'Import products as drafts →'}</button>
+          </form>
+          {importReport && <p className="admin-notice" role="status">{importReport}</p>}
           <hr />
           <p className="eyebrow">NEW LISTING</p><h2>Add a product</h2>
           <form className="admin-form" onSubmit={addProduct}>
